@@ -3,7 +3,14 @@ import React, { Component } from "react";
 let intervalid;
 let visibilityChange;
 const REPORT_HEARTBEAT_INTERVAL = 4000;
-
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
 export class AnalyticsTracker extends Component {
   constructor(props) {
     super(props);
@@ -41,35 +48,42 @@ export class AnalyticsTracker extends Component {
     // Return null if the cookie was not found
     return null;
   }
+  constructPayload() {
+    let payload = {
+      referrer: document.referrer || window.location.ancestorOrigins[0] || "",
+      url: window.location.href,
+      pathname: window.location.pathname,
+      hostname: window.location.hostname,
+      title: document.title,
+      screen: window.screen.width + "x" + window.screen.height,
+      language: navigator.language,
+      utmSource: this.getCookieValue("utm_source"),
+      utmMedium: this.getCookieValue("utm_medium"),
+      utmCampaign: this.getCookieValue("utm_campaign"),
+      utmTerm: this.getCookieValue("utm_term"),
+      utmContent: this.getCookieValue("utm_content"),
+      sessionId: this.sessionId,
+      network: this.getNetworkConnectionInfo(),
+      events: this.eventCollections,
+    };
+
+    if (this.props.customPayload) {
+      Object.assign(payload, this.props.customPayload);
+    }
+
+    return payload;
+  }
   async report(callback = () => {}) {
     if (this.eventCollections.length > 0) {
       try {
         console.log("Sending analytics data to server...");
         console.log("Event collections:", this.eventCollections);
 
-        let payload = {
-          referrer:
-            document.referrer || window.location.ancestorOrigins["0"] || "",
-          url: window.location.href,
-          pathname: window.location.pathname,
-          hostname: window.location.hostname,
-          title: document.title,
-          screen: window.screen.width + "x" + window.screen.height,
-          language: navigator.language,
-          utmSource: this.getCookieValue("utm_source"),
-          utmMedium: this.getCookieValue("utm_medium"),
-          utmCampaign: this.getCookieValue("utm_campaign"),
-          utmTerm: this.getCookieValue("utm_term"),
-          utmContent: this.getCookieValue("utm_content"),
-          sessionId: this.sessionId,
-          network: this.getNetworkConnectionInfo(),
-          events: this.eventCollections,
-        };
+        let payload = this.constructPayload();
+        console.log("Payload:", payload);
         if (this.props.customPayload) {
           Object.assign(payload, this.props.customPayload);
         }
-
-        console.log("Payload:", payload);
         if (this.props.reportingEndpoint) {
           let response = await fetch(this.props.reportingEndpoint, {
             method: "POST",
@@ -163,7 +177,7 @@ export class AnalyticsTracker extends Component {
     }
   }
 
-  handleClick = (event) => {
+  handleClick = debounce((event) => {
     console.log("Click event caught!");
     const target = event.target.closest("[data-component]") || null;
 
@@ -183,7 +197,7 @@ export class AnalyticsTracker extends Component {
       elementName,
       componentName: target ? target.getAttribute("data-component") : "",
     });
-  };
+  }, 300); // debounce time in milliseconds
 
   handleIntersect = (entries) => {
     entries.forEach((entry) => {
