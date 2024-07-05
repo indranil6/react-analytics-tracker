@@ -17,9 +17,11 @@ export class AnalyticsTracker extends Component {
     this.heartBeatInterval =
       props.heartBeatInterval || REPORT_HEARTBEAT_INTERVAL;
 
-    this.sessionId =
-      window.sessionStorage.getItem("sessionId") || this.generateSessionId();
-    window.sessionStorage.setItem("rat:sessionId", this.sessionId);
+    if (typeof window !== "undefined") {
+      this.sessionId =
+        window.sessionStorage.getItem("sessionId") || this.generateSessionId();
+      window.sessionStorage.setItem("rat:sessionId", this.sessionId);
+    }
 
     this.eventCollections = [];
   }
@@ -49,6 +51,7 @@ export class AnalyticsTracker extends Component {
     return "";
   }
   constructPayload() {
+    if (typeof window === "undefined") return {};
     let payload = {
       referrer: document.referrer || window.location.ancestorOrigins[0] || "",
       url: window.location.href,
@@ -195,6 +198,7 @@ export class AnalyticsTracker extends Component {
   }, 300); // debounce time in milliseconds
 
   handleIntersect = (entries) => {
+    if (typeof window === "undefined") return;
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         const componentName = entry.target.getAttribute("data-component");
@@ -265,10 +269,13 @@ export class AnalyticsTracker extends Component {
       childList: true,
       subtree: true,
     });
+    let allComponentNodes = document.querySelectorAll("[data-component]");
 
-    document
-      .querySelectorAll("[data-component]")
-      .forEach((component) => this.observer.observe(component));
+    if (allComponentNodes && allComponentNodes.length > 0) {
+      allComponentNodes.forEach((component) =>
+        this.observer.observe(component)
+      );
+    }
 
     document.addEventListener("click", this.handleClick);
 

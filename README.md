@@ -145,4 +145,24 @@ The component sends periodic heartbeat reports to the endpoint to keep track of 
 </AnalyticsTracker>
 ```
 
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+All notable changes to this project will be documented in this section.
+
+## Support
+
+If you encounter any issues or have any questions, feel free to open an issue on the [GitHub repository](https://github.com/indranil6/react-analytics-tracker).
+
+## Acknowledgments
+
+- Thanks to the React community for their valuable feedback and contributions.
+
+## Contact
+
+For any inquiries or support, you can reach out to the maintainer at [indranilkundu6@gmail.com](mailto:indranilkundu6@gmail.com).
+
 ### Happy tracking!
