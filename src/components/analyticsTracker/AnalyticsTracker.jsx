@@ -20,7 +20,7 @@ export class AnalyticsTracker extends Component {
     this.sessionId =
       window.sessionStorage.getItem("sessionId") || this.generateSessionId();
     window.sessionStorage.setItem("rat:sessionId", this.sessionId);
-    console.log("Session id:", this.sessionId);
+
     this.eventCollections = [];
   }
   generateSessionId() {
@@ -45,8 +45,8 @@ export class AnalyticsTracker extends Component {
       }
     }
 
-    // Return null if the cookie was not found
-    return null;
+    // Return "" if the cookie was not found
+    return "";
   }
   constructPayload() {
     let payload = {
@@ -76,31 +76,29 @@ export class AnalyticsTracker extends Component {
   async report(callback = () => {}) {
     if (this.eventCollections.length > 0) {
       try {
-        console.log("Sending analytics data to server...");
-        console.log("Event collections:", this.eventCollections);
-
         let payload = this.constructPayload();
-        console.log("Payload:", payload);
+
         if (this.props.customPayload) {
           Object.assign(payload, this.props.customPayload);
         }
         if (this.props.reportingEndpoint) {
+          if (
+            this.props.onReport &&
+            typeof this.props.onReport === "function"
+          ) {
+            this.props.onReport(payload);
+          }
           let response = await fetch(this.props.reportingEndpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(this.eventCollections),
+            body: JSON.stringify(payload),
           });
           if (response.ok) {
-            console.log("Successfully sent analytics data to server!");
             this.eventCollections.length = 0;
             callback();
           } else {
-            console.log(
-              "Failed to send analytics data to server:",
-              response.status
-            );
             this.eventCollections.length = 0;
             callback();
           }
@@ -114,7 +112,6 @@ export class AnalyticsTracker extends Component {
           callback();
         }
       } catch (error) {
-        console.log("Error sending analytics data to server:", error);
         this.eventCollections.length = 0;
         callback();
       }
@@ -149,8 +146,6 @@ export class AnalyticsTracker extends Component {
   }
 
   trackEvent(eventName, data) {
-    console.log(`Event: ${eventName}`, data);
-
     let newEventRow = {
       data: data.eventData,
       event: eventName,
@@ -163,35 +158,35 @@ export class AnalyticsTracker extends Component {
     }
     this.eventCollections.push(newEventRow);
     if (eventName === "view") {
-      console.log("Tracking view event...");
-
       if (this.eventCollections.length > 4) {
-        this.report(() => {
-          console.log("Reported!");
-        });
+        this.report();
       }
     } else if (eventName === "click") {
-      console.log("Tracking click event...");
-
       this.report();
     }
   }
 
   handleClick = debounce((event) => {
-    console.log("Click event caught!");
     const target = event.target.closest("[data-component]") || null;
 
     const elementName =
       event.target.getAttribute("data-element") || event.target.tagName;
 
+    const className = event.target.getAttribute("class") || null;
+    const idName = event.target.getAttribute("id") || null;
+
     const data = event.target.getAttribute("data-element-data");
-    console.log("Tracking click event...");
-    console.log("Component:", elementName);
-    console.log("Data:", data);
-    let clickCoords =
-      event.nativeEvent.offsetX + "x" + event.nativeEvent.offsetY;
-    console.log("Click coordinates:", clickCoords);
-    let clickData = JSON.stringify({ clickCoords, data });
+    let x = event.clientX;
+    let y = event.clientY;
+
+    let clickCoords = x + "x" + y;
+
+    let clickData = JSON.stringify({
+      clickCoords,
+      data,
+      className,
+      id: idName,
+    });
     this.trackEvent("click", {
       eventData: clickData,
       elementName,
@@ -204,15 +199,27 @@ export class AnalyticsTracker extends Component {
       if (entry.isIntersecting) {
         const componentName = entry.target.getAttribute("data-component");
         const data = entry.target.getAttribute("data-component-data");
-        console.log("Tracking view event...");
-        console.log("Component:", componentName);
-        let scrollPercentage = entry.intersectionRatio * 100;
-        console.log("Scroll percentage:", scrollPercentage);
-        let scrollPosition = window.pageYOffset;
-        console.log("Scroll position:", scrollPosition);
+
+        let viewedPercentage = entry.intersectionRatio * 100;
+
+        let rect = entry.target.getBoundingClientRect();
+
+        const rectObject = {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          left: rect.left,
+        };
+
+        let scrollPosition = window.scrollY || window.pageYOffset;
         let scrollData = JSON.stringify({
-          scrollPercentage,
+          viewedPercentage,
           scrollPosition,
+          bounds: rectObject,
           data: data || "",
         });
         this.trackEvent("view", {
@@ -225,22 +232,25 @@ export class AnalyticsTracker extends Component {
   };
 
   observeNewComponents = (mutationsList) => {
-    mutationsList.forEach((mutation) => {
-      console.log("Mutation Type:", mutation.type);
-      if (mutation.type === "childList") {
-        console.log("Added Nodes:", mutation.addedNodes);
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1 && node.hasAttribute("data-component")) {
-            console.log("Observing Node:", node);
-            this.observer.observe(node);
+    if (Array.isArray(mutationsList) && mutationsList.length > 0) {
+      mutationsList.forEach((mutation) => {
+        if (mutation.type === "childList") {
+          if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === 1 && node.hasAttribute("data-component")) {
+                this.observer.observe(node);
+              }
+              const childNodes = node.querySelectorAll("[data-component]");
+              if (childNodes && childNodes.length > 0) {
+                childNodes.forEach((childNode) => {
+                  this.observer.observe(childNode);
+                });
+              }
+            });
           }
-          node.querySelectorAll("[data-component]").forEach((childNode) => {
-            console.log("Observing Child Node:", childNode);
-            this.observer.observe(childNode);
-          });
-        });
-      }
-    });
+        }
+      });
+    }
   };
 
   componentDidMount() {
