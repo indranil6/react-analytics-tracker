@@ -69,7 +69,12 @@ Example:
 
 The `AnalyticsTracker` component accepts the following props:
 
+- `appName` (optional) : Specifies the application name to include in the analytics payload sent to the server
+
+- `appName` (optional) : Specifies the application version to include in the analytics payload sent to the server
+
 - `heartBeatInterval` (optional): Specifies the interval (in milliseconds) for sending periodic heartbeat reports. Defaults to 4000 milliseconds.
+
 - `customPayload` (optional): An object containing custom data to include in the analytics payload sent to the server.
 
 - `customProperties` (optional): An object containing custom properties to add to each tracked event in the analytics payload.
@@ -126,11 +131,37 @@ You can include custom properties with each tracked event by passing a customPro
 </AnalyticsTracker>
 ```
 
-## Event Debouncing
+## How it works
+
+The react-analytics-tracker package provides a way to track user interactions and page views within a React application. It leverages various web APIs and techniques to gather and report analytics data effectively. Here’s an overview of its functionality:
+
+### Session Management
+
+Upon initialization, AnalyticsTracker generates a unique session ID (sessionId) for each user. This ID is stored in sessionStorage to track user sessions across different page views.
+
+### Event Tracking
+
+#### Click Events
+
+When a user clicks on an element in the DOM, the AnalyticsTracker captures the event details such as coordinates, element attributes (data-element), and contextual information. These events are queued and reported periodically or immediately if configured.
+
+#### Viewport Visibility
+
+Using the IntersectionObserver, the tracker monitors when components become visible in the viewport (view events). It calculates the percentage of the component visible and reports this information along with optional additional data (data-component-data).
+
+#### Reporting
+
+The tracker allows reporting of accumulated events to either a specified reportingEndpoint via HTTP POST requests or to a custom handler (onReport function) for manual processing. This flexibility enables integration with various analytics services or custom backend systems.
+
+#### Network and User Environment
+
+The tracker also captures details about the user’s network connection (navigator.connection) and environment (screen size, language) to provide additional context to analytics reports.
+
+#### Event Debouncing
 
 Click events are debounced to avoid multiple reports in quick succession. The debounce time is set to 300 milliseconds by default
 
-## Heartbeat Reporting
+#### Heartbeat Reporting
 
 The component sends periodic heartbeat reports to the endpoint to keep track of the session. The default interval is 4000 milliseconds (4 seconds). You can customize this interval by passing a heartBeatInterval prop.
 
@@ -145,13 +176,77 @@ The component sends periodic heartbeat reports to the endpoint to keep track of 
 </AnalyticsTracker>
 ```
 
+## Payload Generation
+
+The payload object used in react-analytics-tracker encapsulates various pieces of information about the user’s interaction and environment. Here’s an interface that describes the structure of the payload object:
+
+```tsx
+interface AnalyticsPayload {
+  referrer: string; // Referring URL of the current page
+  url: string; // Current URL
+  pathname: string; // Path part of the URL
+  hostname: string; // Hostname of the current URL
+  title: string; // Title of the current document
+  screen: string; // Screen dimensions (width x height)
+  language: string; // User's preferred language
+  utmSource: string; // UTM source parameter from cookies
+  utmMedium: string; // UTM medium parameter from cookies
+  utmCampaign: string; // UTM campaign parameter from cookies
+  utmTerm: string; // UTM term parameter from cookies
+  utmContent: string; // UTM content parameter from cookies
+  sessionId: string; // Unique session identifier
+  network: {
+    // Network connection details
+    rtt: number | undefined; // Round-trip time
+    type: string | undefined; // Connection type
+    saveData: boolean | undefined; // Data-saving mode
+    downLink: number | undefined; // Downlink speed
+    effectiveType: string | undefined; // Effective connection type
+    isOnline: boolean; // Online status
+  };
+  events: Array<{
+    // Array of tracked events
+    data: string; // Event data (JSON stringified)
+    event: string; // Event type ('click' or 'view')
+    element: string | null; // Element name or tag name
+    component: string; // Component name
+    timestamp: number; // Timestamp of the event
+    [key: string]: any; // Additional custom properties
+  }>;
+  [key: string]: any; // Additional custom properties
+}
+```
+
+### Usage
+
+When using the onReport function callback or customizing the payload structure, developers should import AnalyticsPayload and reference it as follows:
+
+```tsx
+import { AnalyticsPayload } from "react-analytics-tracker";
+
+// Example usage of onReport with AnalyticsPayload
+const handleReport = (payload: AnalyticsPayload) => {
+  // Implement custom logic to handle the payload
+  console.log("Reporting payload:", payload);
+};
+
+// Usage within your AnalyticsTracker component
+<AnalyticsTracker onReport={handleReport}>
+  {/* Your application components */}
+</AnalyticsTracker>;
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
-All notable changes to this project will be documented in this section.
+### Version 1.0.1 (06-07-2024)
+
+- Added TypeScript support.
+- Introduced interfaces for `AnalyticsPayload` to facilitate type-safe usage of `onReport` function.
+- Updated documentation for `AnalyticsPayload` interface usage in `onReport`.
 
 ## Support
 

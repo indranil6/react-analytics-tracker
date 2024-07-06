@@ -1,18 +1,81 @@
 import React, { Component } from "react";
 
-let intervalid;
-let visibilityChange;
+let intervalid: NodeJS.Timeout;
+let visibilityChange:
+  | keyof DocumentEventMap
+  | "msvisibilitychange"
+  | "webkitvisibilitychange";
 const REPORT_HEARTBEAT_INTERVAL = 4000;
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
+
+function debounce(func: (...args: any[]) => void, wait: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return function (this: any, ...args: any[]) {
     const context = this;
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
   };
 }
-export class AnalyticsTracker extends Component {
-  constructor(props) {
+interface NetworkConnectionInfo {
+  rtt?: number;
+  type?: string;
+  saveData?: boolean;
+  downLink?: number;
+  effectiveType?: string;
+  isOnline: boolean;
+}
+
+interface EventCollection {
+  data: string;
+  event: string;
+  element: string;
+  component: string;
+  timestamp: number;
+}
+interface AnalyticsPayload {
+  appName?: string;
+  appVersion?: string;
+  referrer: string;
+  url: string;
+  pathname: string;
+  hostname: string;
+  title: string;
+  screen: string;
+  language: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmTerm: string;
+  utmContent: string;
+  sessionId: string;
+  network: NetworkConnectionInfo;
+  events: Array<EventCollection>;
+  [key: string]: any; // for customPayload properties
+}
+interface TrackData {
+  eventData: string | null;
+  elementName: string | null;
+  componentName: string | null;
+}
+
+export interface AnalyticsTrackerProps {
+  appName?: string;
+  appVersion?: string;
+  heartBeatInterval?: number;
+  customPayload?: Record<string, any>;
+  reportingEndpoint?: string;
+  onReport?: (payload: AnalyticsPayload) => void;
+  customProperties?: Record<string, any>;
+}
+
+export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
+  private heartBeatInterval: number;
+  private sessionId: string = "";
+  private eventCollections: Array<EventCollection>;
+  private observer: IntersectionObserver | undefined;
+  private mutationObserver: MutationObserver | undefined;
+  private handleVisibilityChange: (() => void) | undefined;
+
+  constructor(props: AnalyticsTrackerProps) {
     super(props);
     this.heartBeatInterval =
       props.heartBeatInterval || REPORT_HEARTBEAT_INTERVAL;
@@ -25,34 +88,52 @@ export class AnalyticsTracker extends Component {
 
     this.eventCollections = [];
   }
+
   generateSessionId() {
     return (
       Math.random().toString(36).substring(2, 15) +
       Math.random().toString(36).substring(2, 15)
     );
   }
-  getCookieValue(name) {
-    // Create a regular expression to find the cookie with the specified name
+
+  getCookieValue(name: string): string {
     const nameEQ = name + "=";
     const cookies = document.cookie.split(";");
 
-    // Iterate through the cookies
     for (let i = 0; i < cookies.length; i++) {
       let cookie = cookies[i].trim();
-
-      // Check if the cookie's name matches the specified name
       if (cookie.indexOf(nameEQ) === 0) {
-        // Return the value of the cookie
         return cookie.substring(nameEQ.length, cookie.length);
       }
     }
 
-    // Return "" if the cookie was not found
     return "";
   }
-  constructPayload() {
-    if (typeof window === "undefined") return {};
-    let payload = {
+
+  constructPayload(): AnalyticsPayload {
+    if (typeof window === "undefined") {
+      return {
+        referrer: "",
+        url: "",
+        pathname: "",
+        hostname: "",
+        title: "",
+        screen: "",
+        language: "",
+        utmSource: "",
+        utmMedium: "",
+        utmCampaign: "",
+        utmTerm: "",
+        utmContent: "",
+        sessionId: "",
+        network: { isOnline: false },
+        events: [],
+      };
+    }
+
+    let payload: AnalyticsPayload = {
+      appName: this.props.appName || "",
+      appVersion: this.props.appVersion || "",
       referrer: document.referrer || window.location.ancestorOrigins[0] || "",
       url: window.location.href,
       pathname: window.location.pathname,
@@ -76,7 +157,8 @@ export class AnalyticsTracker extends Component {
 
     return payload;
   }
-  async report(callback = () => {}) {
+
+  async report(callback: () => void = () => {}) {
     if (this.eventCollections.length > 0) {
       try {
         let payload = this.constructPayload();
@@ -110,7 +192,6 @@ export class AnalyticsTracker extends Component {
           typeof this.props.onReport === "function"
         ) {
           this.props.onReport(payload);
-
           this.eventCollections.length = 0;
           callback();
         }
@@ -124,14 +205,14 @@ export class AnalyticsTracker extends Component {
   getNetworkConnection() {
     if (typeof navigator === "undefined") return null;
     return (
-      navigator.connection ||
-      navigator.mozConnection ||
-      navigator.webkitConnection ||
+      (navigator as any).connection ||
+      (navigator as any).mozConnection ||
+      (navigator as any).webkitConnection ||
       null
     );
   }
 
-  getNetworkConnectionInfo() {
+  getNetworkConnectionInfo(): NetworkConnectionInfo {
     const connection = this.getNetworkConnection();
     if (!connection) {
       return {
@@ -148,12 +229,12 @@ export class AnalyticsTracker extends Component {
     };
   }
 
-  trackEvent(eventName, data) {
-    let newEventRow = {
-      data: data.eventData,
+  trackEvent(eventName: string, data: TrackData) {
+    let newEventRow: EventCollection = {
+      data: data?.eventData || "",
       event: eventName,
-      element: data.elementName,
-      component: data.componentName,
+      element: data?.elementName || "",
+      component: data?.componentName || "",
       timestamp: Date.now(),
     };
     if (this.props.customProperties) {
@@ -169,16 +250,21 @@ export class AnalyticsTracker extends Component {
     }
   }
 
-  handleClick = debounce((event) => {
-    const target = event.target.closest("[data-component]") || null;
+  handleClick = debounce((event: MouseEvent) => {
+    const target =
+      (event.target as HTMLElement).closest("[data-component]") || null;
 
     const elementName =
-      event.target.getAttribute("data-element") || event.target.tagName;
+      (event.target as HTMLElement).getAttribute("data-element") ||
+      (event.target as HTMLElement).tagName;
 
-    const className = event.target.getAttribute("class") || null;
-    const idName = event.target.getAttribute("id") || null;
+    const className =
+      (event.target as HTMLElement).getAttribute("class") || null;
+    const idName = (event.target as HTMLElement).getAttribute("id") || null;
 
-    const data = event.target.getAttribute("data-element-data");
+    const data = (event.target as HTMLElement).getAttribute(
+      "data-element-data"
+    );
     let x = event.clientX;
     let y = event.clientY;
 
@@ -197,12 +283,12 @@ export class AnalyticsTracker extends Component {
     });
   }, 300); // debounce time in milliseconds
 
-  handleIntersect = (entries) => {
+  handleIntersect = (entries: IntersectionObserverEntry[]) => {
     if (typeof window === "undefined") return;
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
-        const componentName = entry.target.getAttribute("data-component");
-        const data = entry.target.getAttribute("data-component-data");
+        const componentName = entry.target.getAttribute("data-component") || "";
+        const data = entry.target.getAttribute("data-component-data") || "";
 
         let viewedPercentage = entry.intersectionRatio * 100;
 
@@ -235,19 +321,24 @@ export class AnalyticsTracker extends Component {
     });
   };
 
-  observeNewComponents = (mutationsList) => {
+  observeNewComponents = (mutationsList: MutationRecord[]) => {
     if (Array.isArray(mutationsList) && mutationsList.length > 0) {
       mutationsList.forEach((mutation) => {
         if (mutation.type === "childList") {
           if (mutation.addedNodes && mutation.addedNodes.length > 0) {
             mutation.addedNodes.forEach((node) => {
-              if (node.nodeType === 1 && node.hasAttribute("data-component")) {
-                this.observer.observe(node);
+              if (
+                node.nodeType === 1 &&
+                (node as HTMLElement).hasAttribute("data-component")
+              ) {
+                this.observer?.observe(node as HTMLElement);
               }
-              const childNodes = node.querySelectorAll("[data-component]");
+              const childNodes = (node as HTMLElement).querySelectorAll(
+                "[data-component]"
+              );
               if (childNodes && childNodes.length > 0) {
                 childNodes.forEach((childNode) => {
-                  this.observer.observe(childNode);
+                  this.observer?.observe(childNode as HTMLElement);
                 });
               }
             });
@@ -273,7 +364,7 @@ export class AnalyticsTracker extends Component {
 
     if (allComponentNodes && allComponentNodes.length > 0) {
       allComponentNodes.forEach((component) =>
-        this.observer.observe(component)
+        this.observer?.observe(component)
       );
     }
 
@@ -287,13 +378,16 @@ export class AnalyticsTracker extends Component {
 
     if (typeof document.hidden !== "undefined") {
       visibilityChange = "visibilitychange";
-    } else if (typeof document.msHidden !== "undefined") {
+    } else if (typeof (document as any).msHidden !== "undefined") {
       visibilityChange = "msvisibilitychange";
-    } else if (typeof document.webkitHidden !== "undefined") {
+    } else if (typeof (document as any).webkitHidden !== "undefined") {
       visibilityChange = "webkitvisibilitychange";
     }
 
-    document.addEventListener(visibilityChange, this.handleVisibilityChange);
+    document.addEventListener(
+      visibilityChange as keyof DocumentEventMap,
+      this.handleVisibilityChange as EventListener
+    );
     intervalid = setInterval(() => {
       this.report();
     }, this.heartBeatInterval);
@@ -301,16 +395,21 @@ export class AnalyticsTracker extends Component {
 
   componentWillUnmount() {
     document.removeEventListener("click", this.handleClick);
-    this.mutationObserver.disconnect();
-    this.observer.disconnect();
+    this.mutationObserver?.disconnect();
+    this.observer?.disconnect();
     if (intervalid) {
       clearInterval(intervalid);
       this.report();
     }
-    document.removeEventListener(visibilityChange, this.handleVisibilityChange);
+    document.removeEventListener(
+      visibilityChange as keyof DocumentEventMap,
+      this.handleVisibilityChange as EventListener
+    );
   }
 
   render() {
     return <>{this.props.children}</>;
   }
 }
+
+export { AnalyticsPayload };
