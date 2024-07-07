@@ -19,7 +19,7 @@ yarn add react-analytics-tracker
 
 ## Usage
 
-To use the AnalyticsTracker component, wrap it around your application or specific parts of your application where you want to track user interactions.
+To use the `AnalyticsTracker` component, wrap it around your application or specific parts of your application where you want to track user interactions.
 
 ## Basic Example
 
@@ -131,6 +131,79 @@ You can include custom properties with each tracked event by passing a customPro
 </AnalyticsTracker>
 ```
 
+### Tracking Custom Events
+
+For custom events beyond clicks and views, use the `trackCustomEvent` method wrapped with `AnalyticsProvider` with same props as of `AnalyticsTracker`.
+
+```jsx
+import { withAnalytics } from "react-analytics-tracker";
+
+// Define a component where you want to track custom events
+const CustomComponent = ({ tracker }) => {
+  const handleEvent = () => {
+    const customEventData = {
+      eventData: "Additional event data",
+      elementName: "customElement",
+      componentName: "CustomComponent",
+    };
+    tracker.trackCustomEvent("customEventName", customEventData, true);
+  };
+
+  return (
+    <div>
+      {/* Your component content */}
+      <button onClick={handleEvent}>Trigger Custom Event</button>
+    </div>
+  );
+};
+
+export default withAnalytics(CustomComponent);
+```
+
+### trackCustomEvent Method
+
+The trackCustomEvent method allows tracking of custom events with specific event details:
+
+- `eventName`: A string representing the name of the custom event.
+
+- `data`: An object conforming to the TrackData interface, containing:
+
+  - `eventData`: Additional data related to the event.
+
+  - `elementName`: Name or identifier of the UI element triggering the event.
+  - `componentName`: Name or identifier of the React component where the event occurred.
+
+- `isToReportImmediately (optional)`: A boolean flag. If true, the event will be reported immediately after tracking. If false or omitted, the event will be queued for periodic reporting as per the configured rules.
+
+```ts
+interface TrackData {
+  eventData: string | null;
+  elementName: string | null;
+  componentName: string | null;
+}
+```
+
+## Instance Methods
+
+<table>
+  <thead>
+    <tr>
+      <th>Method Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>trackCustomEvent(eventName: string, data: TrackData, isToReportImmediately: boolean = false)</code></td>
+      <td>Tracks a custom event with specified event name, data, and optionally reports it immediately based on the <code>isToReportImmediately</code> flag.</td>
+    </tr>
+    <tr>
+      <td><code>report()</code></td>
+      <td>Reports accumulated events to the specified endpoint or via the <code>onReport</code> function, depending on configuration.</td>
+    </tr>
+  </tbody>
+</table>
+
 ## How it works
 
 The react-analytics-tracker package provides a way to track user interactions and page views within a React application. It leverages various web APIs and techniques to gather and report analytics data effectively. Here’s an overview of its functionality:
@@ -151,7 +224,17 @@ Using the IntersectionObserver, the tracker monitors when components become visi
 
 #### Reporting
 
-The tracker allows reporting of accumulated events to either a specified reportingEndpoint via HTTP POST requests or to a custom handler (onReport function) for manual processing. This flexibility enables integration with various analytics services or custom backend systems.
+The tracker allows reporting of accumulated events to either a specified reportingEndpoint via HTTP POST requests or to a custom handler (onReport function) for manual processing.
+
+The tracker allows reporting in three scenarios:
+
+1. `Heartbeat Interval`: Events are reported periodically based on the `heartBeatInterval` prop set in the `AnalyticsTracker` component.
+
+2. `Queue Size`: Events are reported when the queue size reaches 5.
+
+3. `Page Visibility`: Events are reported when the user changes tabs or minimizes the screen, utilizing the Page Visibility API.
+
+This flexibility enables integration with various analytics services or custom backend systems.
 
 #### Network and User Environment
 
@@ -242,11 +325,46 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Changelog
 
-### Version 1.0.1 (06-07-2024)
-
-- Added TypeScript support.
-- Introduced interfaces for `AnalyticsPayload` to facilitate type-safe usage of `onReport` function.
-- Updated documentation for `AnalyticsPayload` interface usage in `onReport`.
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Version</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2024-07-05</td>
+      <td>1.0.0</td>
+      <td>Initial release of react-analytics-tracker package</td>
+    </tr>
+    <tr>
+      <td>2024-07-06</td>
+      <td>1.0.2</td>
+      <td>
+       <ul>
+        <li>Added TypeScript support</li>
+        <li> Introduced interfaces for `AnalyticsPayload` to facilitate type-safe usage of `onReport` function.
+        <li>Updated documentation for `AnalyticsPayload` interface usage in `onReport`.
+      </td>
+    </tr>
+    <tr>
+      <td>2024-07-07</td>
+      <td>1.0.3</td>
+      <td>
+        <ul>
+        <li>Added withAnalytics HOC: Introduced withAnalytics higher-order component for integrating analytics tracking into functional components.
+        </li>
+        <li>Implemented AnalyticsProvider: Created AnalyticsProvider class component to manage analytics tracking across the application, enabling access to the tracking instance via context.
+        </li>
+        <li>Enhanced Custom Event Tracking: Extended event tracking capabilities to support custom events across different components using the trackCustomEvent method.
+        </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## Support
 

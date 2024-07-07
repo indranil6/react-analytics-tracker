@@ -89,14 +89,14 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
     this.eventCollections = [];
   }
 
-  generateSessionId() {
+  private generateSessionId() {
     return (
       Math.random().toString(36).substring(2, 15) +
       Math.random().toString(36).substring(2, 15)
     );
   }
 
-  getCookieValue(name: string): string {
+  private getCookieValue(name: string): string {
     const nameEQ = name + "=";
     const cookies = document.cookie.split(";");
 
@@ -110,7 +110,7 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
     return "";
   }
 
-  constructPayload(): AnalyticsPayload {
+  private constructPayload(): AnalyticsPayload {
     if (typeof window === "undefined") {
       return {
         referrer: "",
@@ -229,7 +229,11 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
     };
   }
 
-  trackEvent(eventName: string, data: TrackData) {
+  private trackEvent(
+    eventName: string,
+    data: TrackData,
+    isToReportImmediately: boolean = false
+  ) {
     let newEventRow: EventCollection = {
       data: data?.eventData || "",
       event: eventName,
@@ -247,9 +251,19 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
       }
     } else if (eventName === "click") {
       this.report();
+    } else {
+      if (isToReportImmediately) {
+        this.report();
+      }
     }
   }
-
+  public trackCustomEvent(
+    eventName: string,
+    data: TrackData,
+    isToReportImmediately: boolean = false
+  ) {
+    this.trackEvent(eventName, data, isToReportImmediately);
+  }
   handleClick = debounce((event: MouseEvent) => {
     const target =
       (event.target as HTMLElement).closest("[data-component]") || null;
@@ -290,6 +304,9 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
         const componentName = entry.target.getAttribute("data-component") || "";
         const data = entry.target.getAttribute("data-component-data") || "";
 
+        const elementName =
+          entry.target.getAttribute("data-element") || entry.target.tagName;
+
         let viewedPercentage = entry.intersectionRatio * 100;
 
         let rect = entry.target.getBoundingClientRect();
@@ -315,7 +332,7 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
         this.trackEvent("view", {
           eventData: scrollData,
           componentName,
-          elementName: "",
+          elementName: elementName || "",
         });
       }
     });
