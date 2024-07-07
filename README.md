@@ -8,7 +8,6 @@ Install the package via npm:
 
 ```bash
 npm install react-analytics-tracker
-
 ```
 
 or via yarn:
@@ -45,7 +44,7 @@ ReactDOM.render(<App />, document.getElementById("root"));
 
 To track a component view, add the `data-component` attribute to the component element. Optionally, include additional data using the `data-component-data` attribute.
 
-Example:
+### Example:
 
 ```jsx
 <div data-component="YourComponent" data-component-data="additionalData">
@@ -57,7 +56,7 @@ Example:
 
 To track a click event, add the `data-element` attribute to the clickable element. If `data-element` is not present, the tag name of the element will be used for tracking. Optionally, include extra data using the `data-element-data` attribute.
 
-Example:
+### Example:
 
 ```jsx
 <button data-element="ButtonElement" data-element-data="extraData">
@@ -71,7 +70,7 @@ The `AnalyticsTracker` component accepts the following props:
 
 - `appName` (optional) : Specifies the application name to include in the analytics payload sent to the server
 
-- `appName` (optional) : Specifies the application version to include in the analytics payload sent to the server
+- `appVersion` (optional) : Specifies the application version to include in the analytics payload sent to the server
 
 - `heartBeatInterval` (optional): Specifies the interval (in milliseconds) for sending periodic heartbeat reports. Defaults to 4000 milliseconds.
 
@@ -83,10 +82,12 @@ The `AnalyticsTracker` component accepts the following props:
 
 - `onReport` (optional): A function that will be called when reporting analytics data. Use this for manual handling of analytics data if `reportingEndpoint` is not provided or for additional logic alongside endpoint reporting.
 
-Example usage:
+### Example usage:
 
 ```jsx
 <AnalyticsTracker
+  appName="MyApp"
+  appVersion="1.0.0"
   heartBeatInterval={5000}
   customPayload={{ projectId: "12345" }}
   reportingEndpoint="https://example.com/analytics"
@@ -133,7 +134,31 @@ You can include custom properties with each tracked event by passing a customPro
 
 ### Tracking Custom Events
 
-For custom events beyond clicks and views, use the `trackCustomEvent` method wrapped with `AnalyticsProvider` with same props as of `AnalyticsTracker`.
+Not only clicks and views, you can implement your own custom events for your purpose with `react-analytics-tracker`. For custom events beyond clicks and views, use the `trackCustomEvent` method wrapped with `AnalyticsProvider` with same props as of `AnalyticsTracker`.
+
+#### Example
+
+First, wrap your application with `AnalyticsProvider`:
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom";
+import { AnalyticsProvider } from "react-analytics-tracker";
+
+const App = () => (
+  <AnalyticsProvider
+    appName="MyApp"
+    appVersion="1.0.0"
+    reportingEndpoint="https://your-endpoint.com/report"
+  >
+    {/* Your application components */}
+  </AnalyticsProvider>
+);
+
+ReactDOM.render(<App />, document.getElementById("root"));
+```
+
+Then, use withAnalytics HOC in the component where you want to use the custom event. And thus your tracker instance will be ready and available at the props
 
 ```jsx
 import { withAnalytics } from "react-analytics-tracker";
@@ -208,56 +233,53 @@ interface TrackData {
 
 The react-analytics-tracker package provides a way to track user interactions and page views within a React application. It leverages various web APIs and techniques to gather and report analytics data effectively. Here’s an overview of its functionality:
 
-### Session Management
+- ### Session Management
 
-Upon initialization, AnalyticsTracker generates a unique session ID (sessionId) for each user. This ID is stored in sessionStorage to track user sessions across different page views.
+  Upon initialization, AnalyticsTracker generates a unique session ID (sessionId) for each user. This ID is stored in sessionStorage to track user sessions across different page views.
 
-### Event Tracking
+- ### Event Tracking
 
-#### Click Events
+  #### Click Events
 
-When a user clicks on an element in the DOM, the AnalyticsTracker captures the event details such as coordinates, element attributes (data-element), and contextual information. These events are queued and reported periodically or immediately if configured.
+  When a user clicks on an element in the DOM, the AnalyticsTracker captures the event details such as coordinates, element attributes (data-element), and contextual information. These events are queued and reported periodically or immediately if configured.
 
-#### Viewport Visibility
+  #### Viewport Visibility
 
-Using the IntersectionObserver, the tracker monitors when components become visible in the viewport (view events). It calculates the percentage of the component visible and reports this information along with optional additional data (data-component-data).
+  Using the IntersectionObserver, the tracker monitors when components become visible in the viewport (view events). It calculates the percentage of the component visible and reports this information along with optional additional data (data-component-data).
 
-#### Reporting
+- ### Reporting
 
-The tracker allows reporting of accumulated events to either a specified reportingEndpoint via HTTP POST requests or to a custom handler (onReport function) for manual processing.
+  The tracker allows reporting of accumulated events to either a specified reportingEndpoint via HTTP POST requests or to a custom handler (onReport function) for manual processing.
 
-The tracker allows reporting in three scenarios:
+  The tracker allows reporting in three scenarios:
 
-1. `Heartbeat Interval`: Events are reported periodically based on the `heartBeatInterval` prop set in the `AnalyticsTracker` component.
+  1. `Heartbeat Interval`: Events are reported periodically based on the `heartBeatInterval` prop set in the `AnalyticsTracker` component.
+     The component sends periodic heartbeat reports to the endpoint to keep track of the session. The default interval is 4000 milliseconds (4 seconds). You can customize this interval by passing a heartBeatInterval prop.
 
-2. `Queue Size`: Events are reported when the queue size reaches 5.
+     ```jsx
+     <AnalyticsTracker
+       appName="MyApp"
+       appVersion="1.0.0"
+       reportingEndpoint="https://your-endpoint.com/report"
+       heartBeatInterval={10000} // 10 seconds
+     >
+       <YourComponent />
+     </AnalyticsTracker>
+     ```
 
-3. `Page Visibility`: Events are reported when the user changes tabs or minimizes the screen, utilizing the Page Visibility API.
+  2. `Queue Size`: Events are reported when the queue size reaches 5.
 
-This flexibility enables integration with various analytics services or custom backend systems.
+  3. `Page Visibility`: Events are reported when the user changes tabs or minimizes the screen, utilizing the Page Visibility API.
 
-#### Network and User Environment
+  This flexibility enables integration with various analytics services or custom backend systems.
 
-The tracker also captures details about the user’s network connection (navigator.connection) and environment (screen size, language) to provide additional context to analytics reports.
+- ### Network and User Environment
 
-#### Event Debouncing
+  The tracker also captures details about the user’s network connection (navigator.connection) and environment (screen size, language) to provide additional context to analytics reports.
 
-Click events are debounced to avoid multiple reports in quick succession. The debounce time is set to 300 milliseconds by default
+- ### Event Debouncing
 
-#### Heartbeat Reporting
-
-The component sends periodic heartbeat reports to the endpoint to keep track of the session. The default interval is 4000 milliseconds (4 seconds). You can customize this interval by passing a heartBeatInterval prop.
-
-```jsx
-<AnalyticsTracker
-  appName="MyApp"
-  appVersion="1.0.0"
-  reportingEndpoint="https://your-endpoint.com/report"
-  heartBeatInterval={10000} // 10 seconds
->
-  <YourComponent />
-</AnalyticsTracker>
-```
+  Click events are debounced to avoid multiple reports in quick succession. The debounce time is set to 300 milliseconds by default
 
 ## Payload Generation
 
