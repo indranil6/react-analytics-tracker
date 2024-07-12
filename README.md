@@ -68,7 +68,7 @@ To track a click event, add the `data-element` attribute to the clickable elemen
 
 To track any of these following events
 
-`"click","mouseover","mouseout","mouseup","mousedown","mousemove","mouseenter","mouseleave","mouseover mouseout","dblclick","contextmenu","submit","reset","touchstart","touchmove","touchend","touchcancel","change","focus","blur","keypress","select","keyup","keydown"`
+`click`,`mouseover`,`mouseout`,`mouseup`,`mousedown`,`mousemove`,`mouseenter`,`mouseleave`,`dblclick`,`contextmenu`,`submit`,`reset`,`touchstart`,`touchmove`,`touchend`,`touchcancel`,`change`,`focus`,`blur`,`keypress`,`select`,`keyup`,`keydown`
 
 First add the `data-event` attribute to the element you want to make eligible to track according to the event. The tracking will take place for the provided valid value of `data-event` only. Possible values for `data-event` are as above. Then add the `data-element` attribute to the element. If `data-element` is not present, the tag name of the element will be used for tracking. Optionally, include extra data using the `data-element-data` attribute.
 
