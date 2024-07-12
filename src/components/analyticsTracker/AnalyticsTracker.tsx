@@ -270,26 +270,26 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
   }
 
   private storeEventsInSession() {
-    // // Load any previously stored events from sessionStorage
-    // const storedEvents = sessionStorage.getItem("rat:storedEvents");
-    // const previousEvents: EventCollection[] = storedEvents
-    //   ? JSON.parse(storedEvents)
-    //   : [];
+    // Load any previously stored events from sessionStorage
+    const storedEvents = sessionStorage.getItem("rat:storedEvents");
+    const previousEvents: EventCollection[] = storedEvents
+      ? JSON.parse(storedEvents)
+      : [];
 
-    // // Increment the failedCount for the current event collections
-    // const updatedEventCollections = this.eventCollections.map((event) => ({
-    //   ...event,
-    //   failedCount: event.failedCount ? event.failedCount + 1 : 1,
-    // }));
+    // Increment the failedCount for the current event collections
+    const updatedEventCollections = this.eventCollections.map((event) => ({
+      ...event,
+      failedCount: event.failedCount ? event.failedCount + 1 : 1,
+    }));
 
-    // // Filter out events with a failedCount of 3 or more
-    // const filteredEventCollections = updatedEventCollections.filter(
-    //   (event) => event.failedCount < 3
-    // );
+    // Filter out events with a failedCount of 3 or more
+    const filteredEventCollections = updatedEventCollections.filter(
+      (event) => event.failedCount < 3
+    );
 
-    // // Merge and store events back in sessionStorage
-    // const allEvents = [...previousEvents, ...filteredEventCollections];
-    // sessionStorage.setItem("rat:storedEvents", JSON.stringify(allEvents));
+    // Merge and store events back in sessionStorage
+    const allEvents = [...previousEvents, ...filteredEventCollections];
+    sessionStorage.setItem("rat:storedEvents", JSON.stringify(allEvents));
 
     // Clear the current event collections
     this.eventCollections.length = 0;
