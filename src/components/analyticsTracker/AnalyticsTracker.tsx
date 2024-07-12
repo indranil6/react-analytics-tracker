@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, FormEvent } from "react";
 
 let intervalid: NodeJS.Timeout;
 let visibilityChange:
@@ -23,6 +23,45 @@ interface NetworkConnectionInfo {
   effectiveType?: string;
   isOnline: boolean;
 }
+enum MouseEvents {
+  CLICK = "click",
+  MOUSE_OVER = "mouseover",
+  MOUSE_OUT = "mouseout",
+  MOUSE_UP = "mouseup",
+  MOUSE_DOWN = "mousedown",
+  MOUSE_MOVE = "mousemove",
+  MOUSE_ENTER = "mouseenter",
+  MOUSE_LEAVE = "mouseleave",
+  MOUSE_OVER_OUT = "mouseover mouseout",
+  DOUBLE_CLICK = "dblclick",
+  CONTEXT_MENU = "contextmenu",
+}
+enum FormEvents {
+  SUBMIT = "submit",
+  RESET = "reset",
+}
+enum InputEvents {
+  CHANGE = "change",
+  FOCUS = "focus",
+  BLUR = "blur",
+  KEYPRESS = "keypress",
+  SELECT = "select",
+  KEYUP = "keyup",
+  KEYDOWN = "keydown",
+}
+enum TouchEvents {
+  TOUCH_START = "touchstart",
+  TOUCH_MOVE = "touchmove",
+  TOUCH_END = "touchend",
+  TOUCH_CANCEL = "touchcancel",
+}
+const EVENTS = [
+  ...Object.values(MouseEvents),
+  ...Object.values(FormEvents),
+  ...Object.values(TouchEvents),
+  ...Object.values(InputEvents),
+];
+console.log("EVENTS:", EVENTS);
 
 interface EventCollection {
   data: string;
@@ -30,6 +69,8 @@ interface EventCollection {
   element: string;
   component: string;
   timestamp: number;
+  failedCount?: number | undefined;
+  [key: string]: any;
 }
 interface AnalyticsPayload {
   appName?: string;
@@ -82,7 +123,8 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
 
     if (typeof window !== "undefined") {
       this.sessionId =
-        window.sessionStorage.getItem("sessionId") || this.generateSessionId();
+        window.sessionStorage.getItem("rat:sessionId") ||
+        this.generateSessionId();
       window.sessionStorage.setItem("rat:sessionId", this.sessionId);
     }
 
@@ -131,6 +173,20 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
       };
     }
 
+    // Load any previously stored events from sessionStorage
+    const storedEvents = sessionStorage.getItem("rat:storedEvents");
+    const previousEvents: EventCollection[] = storedEvents
+      ? JSON.parse(storedEvents)
+      : [];
+
+    // Filter out events with a failedCount of 3 or more
+    const filteredPreviousEvents = previousEvents.filter(
+      (event) => !event.failedCount || event.failedCount < 3
+    );
+
+    // Merge stored events with the current eventCollections
+    const mergedEvents = [...filteredPreviousEvents, ...this.eventCollections];
+
     let payload: AnalyticsPayload = {
       appName: this.props.appName || "",
       appVersion: this.props.appVersion || "",
@@ -148,7 +204,13 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
       utmContent: this.getCookieValue("utm_content"),
       sessionId: this.sessionId,
       network: this.getNetworkConnectionInfo(),
-      events: this.eventCollections,
+      events: mergedEvents?.map((event) => ({
+        component: event.component,
+        element: event.element,
+        data: event.data,
+        event: event.event,
+        timestamp: event.timestamp,
+      })),
     };
 
     if (this.props.customPayload) {
@@ -166,6 +228,7 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
         if (this.props.customPayload) {
           Object.assign(payload, this.props.customPayload);
         }
+
         if (this.props.reportingEndpoint) {
           if (
             this.props.onReport &&
@@ -173,6 +236,7 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
           ) {
             this.props.onReport(payload);
           }
+
           let response = await fetch(this.props.reportingEndpoint, {
             method: "POST",
             headers: {
@@ -180,11 +244,13 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
             },
             body: JSON.stringify(payload),
           });
+
           if (response.ok) {
             this.eventCollections.length = 0;
+            sessionStorage.removeItem("rat:storedEvents");
             callback();
           } else {
-            this.eventCollections.length = 0;
+            this.storeEventsInSession();
             callback();
           }
         } else if (
@@ -193,13 +259,40 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
         ) {
           this.props.onReport(payload);
           this.eventCollections.length = 0;
+          sessionStorage.removeItem("rat:storedEvents");
           callback();
         }
       } catch (error) {
-        this.eventCollections.length = 0;
+        this.storeEventsInSession();
         callback();
       }
     }
+  }
+
+  private storeEventsInSession() {
+    // // Load any previously stored events from sessionStorage
+    // const storedEvents = sessionStorage.getItem("rat:storedEvents");
+    // const previousEvents: EventCollection[] = storedEvents
+    //   ? JSON.parse(storedEvents)
+    //   : [];
+
+    // // Increment the failedCount for the current event collections
+    // const updatedEventCollections = this.eventCollections.map((event) => ({
+    //   ...event,
+    //   failedCount: event.failedCount ? event.failedCount + 1 : 1,
+    // }));
+
+    // // Filter out events with a failedCount of 3 or more
+    // const filteredEventCollections = updatedEventCollections.filter(
+    //   (event) => event.failedCount < 3
+    // );
+
+    // // Merge and store events back in sessionStorage
+    // const allEvents = [...previousEvents, ...filteredEventCollections];
+    // sessionStorage.setItem("rat:storedEvents", JSON.stringify(allEvents));
+
+    // Clear the current event collections
+    this.eventCollections.length = 0;
   }
 
   getNetworkConnection() {
@@ -266,19 +359,24 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
   }
   handleClick = debounce((event: MouseEvent) => {
     const target =
-      (event.target as HTMLElement).closest("[data-component]") || null;
+      (event.target as HTMLElement).closest("[data-component]") || "";
 
     const elementName =
       (event.target as HTMLElement).getAttribute("data-element") ||
       (event.target as HTMLElement).tagName;
 
-    const className =
-      (event.target as HTMLElement).getAttribute("class") || null;
-    const idName = (event.target as HTMLElement).getAttribute("id") || null;
+    if (!elementName) {
+      return;
+    }
+    if (event.type !== "click") {
+      return;
+    }
 
-    const data = (event.target as HTMLElement).getAttribute(
-      "data-element-data"
-    );
+    const className = (event.target as HTMLElement).getAttribute("class") || "";
+    const idName = (event.target as HTMLElement).getAttribute("id") || "";
+
+    const data =
+      (event.target as HTMLElement).getAttribute("data-element-data") || "";
     let x = event.clientX;
     let y = event.clientY;
 
@@ -297,6 +395,45 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
     });
   }, 300); // debounce time in milliseconds
 
+  handleTriggerEvent = debounce(
+    (event: MouseEvent & TouchEvent & FormEvent & InputEvent & Event) => {
+      const eventName =
+        (event.target as HTMLElement).getAttribute("data-event") || "";
+      const target =
+        (event.target as HTMLElement).closest("[data-component]") || "";
+
+      const elementName =
+        (event.target as HTMLElement).getAttribute("data-element") ||
+        (event.target as HTMLElement).tagName;
+
+      const isSameEvent = eventName === event.type;
+      if (!isSameEvent) {
+        return;
+      }
+
+      if (!elementName) {
+        return;
+      }
+
+      const className =
+        (event.target as HTMLElement).getAttribute("class") || "";
+      const idName = (event.target as HTMLElement).getAttribute("id") || "";
+
+      const data =
+        (event.target as HTMLElement).getAttribute("data-element-data") || "";
+      let eventData = JSON.stringify({
+        data,
+        className,
+        id: idName,
+      });
+      this.trackEvent(eventName, {
+        eventData,
+        elementName,
+        componentName: target ? target.getAttribute("data-component") : "",
+      });
+    },
+    300
+  ); // debounce time in milliseconds
   handleIntersect = (entries: IntersectionObserverEntry[]) => {
     if (typeof window === "undefined") return;
     entries.forEach((entry) => {
@@ -387,6 +524,26 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
 
     document.addEventListener("click", this.handleClick);
 
+    //find all elements that have data-event attribute and has a value within the EVENTS array and trigger the event
+
+    let allEventNodes = document.querySelectorAll("[data-event]");
+    if (allEventNodes && allEventNodes.length > 0) {
+      allEventNodes.forEach((event) => {
+        let eventValue = (event as HTMLElement).getAttribute("data-event");
+        let eventTargetElement = (event as HTMLElement).getAttribute(
+          "data-element"
+        );
+        if (
+          eventValue &&
+          EVENTS.includes(
+            eventValue as MouseEvents | FormEvents | TouchEvents | InputEvents
+          )
+        ) {
+          document.addEventListener(eventValue, this.handleTriggerEvent);
+        }
+      });
+    }
+
     this.handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         this.report();
@@ -422,6 +579,20 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
       visibilityChange as keyof DocumentEventMap,
       this.handleVisibilityChange as EventListener
     );
+    let allEventNodes = document.querySelectorAll("[data-event]");
+    if (allEventNodes && allEventNodes.length > 0) {
+      allEventNodes.forEach((event) => {
+        let eventValue = (event as HTMLElement).getAttribute("data-event");
+        if (
+          eventValue &&
+          EVENTS.includes(
+            eventValue as MouseEvents | FormEvents | TouchEvents | InputEvents
+          )
+        ) {
+          document.removeEventListener(eventValue, this.handleTriggerEvent);
+        }
+      });
+    }
   }
 
   render() {

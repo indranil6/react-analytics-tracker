@@ -64,6 +64,26 @@ To track a click event, add the `data-element` attribute to the clickable elemen
 </button>
 ```
 
+## Track Your Other Events
+
+To track any of these following events
+
+`"click","mouseover","mouseout","mouseup","mousedown","mousemove","mouseenter","mouseleave","mouseover mouseout","dblclick","contextmenu","submit","reset","touchstart","touchmove","touchend","touchcancel","change","focus","blur","keypress","select","keyup","keydown"`
+
+First add the `data-event` attribute to the element you want to make eligible to track according to the event. The tracking will take place for the provided valid value of `data-event` only. Possible values for `data-event` are as above. Then add the `data-element` attribute to the element. If `data-element` is not present, the tag name of the element will be used for tracking. Optionally, include extra data using the `data-element-data` attribute.
+
+### Example:
+
+```jsx
+<button
+  data-event="mouseover"
+  data-element="ButtonElement"
+  data-element-data="extraData"
+>
+  Interact with me
+</button>
+```
+
 ## Props
 
 The `AnalyticsTracker` component accepts the following props:
@@ -177,7 +197,7 @@ const CustomComponent = ({ tracker }) => {
   return (
     <div>
       {/* Your component content */}
-      <button onClick={handleEvent}>Trigger Custom Event</button>
+      <button onDoubleClick={handleEvent}>Trigger Custom Event</button>
     </div>
   );
 };
@@ -273,13 +293,17 @@ The react-analytics-tracker package provides a way to track user interactions an
 
   This flexibility enables integration with various analytics services or custom backend systems.
 
+- ### Error Handling and Event Persistence
+
+  To ensure no events are lost in case of reporting failures, the tracker maintains a failedCount flag for each event. If an event fails to report, it is stored in sessionStorage and its failedCount is incremented. Events with a failedCount of 3 or more are discarded to avoid infinite loops and data overload.
+
 - ### Network and User Environment
 
   The tracker also captures details about the user’s network connection (navigator.connection) and environment (screen size, language) to provide additional context to analytics reports.
 
 - ### Event Debouncing
 
-  Click events are debounced to avoid multiple reports in quick succession. The debounce time is set to 300 milliseconds by default
+  Interaction events are debounced to avoid multiple reports in quick succession. The debounce time is set to 300 milliseconds by default
 
 ## Payload Generation
 
@@ -347,46 +371,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Changelog
 
-<table>
-  <thead>
-    <tr>
-      <th>Date</th>
-      <th>Version</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>2024-07-05</td>
-      <td>1.0.0</td>
-      <td>Initial release of react-analytics-tracker package</td>
-    </tr>
-    <tr>
-      <td>2024-07-06</td>
-      <td>1.0.2</td>
-      <td>
-       <ul>
-        <li>Added TypeScript support</li>
-        <li> Introduced interfaces for `AnalyticsPayload` to facilitate type-safe usage of `onReport` function.
-        <li>Updated documentation for `AnalyticsPayload` interface usage in `onReport`.
-      </td>
-    </tr>
-    <tr>
-      <td>2024-07-07</td>
-      <td>1.0.3</td>
-      <td>
-        <ul>
-        <li>Added withAnalytics HOC: Introduced withAnalytics higher-order component for integrating analytics tracking into functional components.
-        </li>
-        <li>Implemented AnalyticsProvider: Created AnalyticsProvider class component to manage analytics tracking across the application, enabling access to the tracking instance via context.
-        </li>
-        <li>Enhanced Custom Event Tracking: Extended event tracking capabilities to support custom events across different components using the trackCustomEvent method.
-        </li>
-        </ul>
-      </td>
-    </tr>
-  </tbody>
-</table>
+See the [CHANGELOG HERE](CHANGELOG.md)
 
 ## Support
 

@@ -1,13 +1,18 @@
 {
   "name": "react-analytics-tracker",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "react-analytics-tracker is a React component for tracking user interactions and events on your web application. This component captures click and view events, collects various data points, and reports them to a specified endpoint.",
   "private": false,
   "main": "dist/index.js",
   "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-lib": "rimraf dist && rollup -c"
+    "build-lib": "rimraf dist && rollup -c",
+    "link": "npm cache clean --force && npm i && npm run build-lib && npm link",
+    "publish": "npm cache clean --force && npm i && npm run build-lib && npm publish",
+    "unlink": "npm unlink -g react-analytics-tracker",
+    "relink": "npm run unlink && npm run link"
   },
   "repository": {
     "type": "git",
@@ -18,7 +23,18 @@
     "analytics",
     "tracking",
     "hoc",
-    "component"
+    "component",
+    "react-tracker",
+    "react-analytics",
+    "tracker",
+    "event-tracking",
+    "click-tracking",
+    "user-interactions",
+    "custom-events",
+    "analytics-hoc",
+    "analytics-context",
+    "viewport-visibility",
+    "web-analytics"
   ],
   "author": "Indranil Kundu <indranilkundu6@gmail.com>",
   "bugs": {
