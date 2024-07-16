@@ -1,6 +1,22 @@
 # react-analytics-tracker
 
-`react-analytics-tracker` is a React component for tracking user interactions and events on your web application. This component captures click and view events, collects various data points, and reports them to a specified endpoint.
+### version 1.0.5 \* Whats New?
+
+#### Firestore Integration:
+
+- If the `reportingEndpoint` is not provided in the props, your data will be stored in `Firestore`.
+
+- You will get a [Free Dashboard](https://analytics-tracker-firebase.web.app/) to access and visualize your data for free.
+
+#### Enhanced Visualization:
+
+- A [Dashboard](https://analytics-tracker-firebase.web.app/) is available to visualize your analytics data with various charts and graphs.
+
+- Supported charts include Line Chart, Bar Chart, Pie Chart, Scatter Plot, and Histogram.
+
+## Intro
+
+`react-analytics-tracker` is a React component for tracking user interactions and events on your web application. This component captures events of user interactions, collects various data points, and reports them to a specified endpoint.
 
 ## Installation
 
@@ -88,9 +104,9 @@ First add the `data-event` attribute to the element you want to make eligible to
 
 The `AnalyticsTracker` component accepts the following props:
 
-- `appName` (optional) : Specifies the application name to include in the analytics payload sent to the server
+- `appName` (required) : Specifies the application name to include in the analytics payload sent to the server
 
-- `appVersion` (optional) : Specifies the application version to include in the analytics payload sent to the server
+- `appVersion` (required) : Specifies the application version to include in the analytics payload sent to the server
 
 - `heartBeatInterval` (optional): Specifies the interval (in milliseconds) for sending periodic heartbeat reports. Defaults to 4000 milliseconds.
 
@@ -98,7 +114,7 @@ The `AnalyticsTracker` component accepts the following props:
 
 - `customProperties` (optional): An object containing custom properties to add to each tracked event in the analytics payload.
 
-- `reportingEndpoint` (optional): If provided, specifies the endpoint where the analytics payload will be POSTed. Either `reportingEndpoint` or `onReport` is required for reporting.
+- `reportingEndpoint` (optional): If provided, specifies the endpoint where the analytics payload will be POSTed. If omitted, your data will be stored in `Firestore`, and you will receive a [free dashboard](https://analytics-tracker-firebase.web.app/) to view your data.
 
 - `onReport` (optional): A function that will be called when reporting analytics data. Use this for manual handling of analytics data if `reportingEndpoint` is not provided or for additional logic alongside endpoint reporting.
 
@@ -259,9 +275,9 @@ The react-analytics-tracker package provides a way to track user interactions an
 
 - ### Event Tracking
 
-  #### Click Events
+  #### Record Events
 
-  When a user clicks on an element in the DOM, the AnalyticsTracker captures the event details such as coordinates, element attributes (data-element), and contextual information. These events are queued and reported periodically or immediately if configured.
+  When a user interacts on an element in the DOM, the AnalyticsTracker captures the event details such as coordinates, element attributes (data-element), and contextual information. These events are queued and reported periodically or immediately if configured.
 
   #### Viewport Visibility
 
@@ -292,6 +308,19 @@ The react-analytics-tracker package provides a way to track user interactions an
   3. `Page Visibility`: Events are reported when the user changes tabs or minimizes the screen, utilizing the Page Visibility API.
 
   This flexibility enables integration with various analytics services or custom backend systems.
+
+- ### Dashboard
+
+  - Access Your Data: Users who omit the reportingEndpoint will have their data stored in Firestore.
+
+  - Free Dashboard: [Free dashboard link](https://analytics-tracker-firebase.web.app/) is provided to visualize and interact with your data. <mark>While registering to dashboard, make sure that you put <b>Application name</b> exactly same as <b>appName</b> in your <b>AnalyticsTracker or AnalyticsProvider</b> component </mark>
+
+  - Various Charts:
+    - Line Chart: Shows the trend of page views over time.
+    - Bar Chart: Compares page views across different pages or time periods.
+    - Pie Chart: Displays the distribution of interactions across different components.
+    - Scatter Plot: Shows the relationship between event timestamps and scroll positions.
+    - Histogram: Shows the distribution of viewed percentages across different events.
 
 - ### Error Handling and Event Persistence
 
@@ -336,7 +365,7 @@ interface AnalyticsPayload {
   events: Array<{
     // Array of tracked events
     data: string; // Event data (JSON stringified)
-    event: string; // Event type ('click' or 'view')
+    event: string; // Event type
     element: string | null; // Element name or tag name
     component: string; // Component name
     timestamp: number; // Timestamp of the event

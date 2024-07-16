@@ -99,8 +99,8 @@ interface TrackData {
 }
 
 export interface AnalyticsTrackerProps {
-  appName?: string;
-  appVersion?: string;
+  appName: string;
+  appVersion: string;
   heartBeatInterval?: number;
   customPayload?: Record<string, any>;
   reportingEndpoint?: string;
@@ -115,9 +115,17 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
   private observer: IntersectionObserver | undefined;
   private mutationObserver: MutationObserver | undefined;
   private handleVisibilityChange: (() => void) | undefined;
+  private firebaseEndpoint: string =
+    "https://react-analytics-tracker-firebase.vercel.app/data";
+
+  private reportingEndpoint: string = "";
 
   constructor(props: AnalyticsTrackerProps) {
     super(props);
+    if (!props.appName || !props.appVersion) {
+      throw new Error("appName and appVersion are required");
+    }
+    this.reportingEndpoint = props.reportingEndpoint || this.firebaseEndpoint;
     this.heartBeatInterval =
       props.heartBeatInterval || REPORT_HEARTBEAT_INTERVAL;
 
@@ -229,37 +237,24 @@ export class AnalyticsTracker extends Component<AnalyticsTrackerProps> {
           Object.assign(payload, this.props.customPayload);
         }
 
-        if (this.props.reportingEndpoint) {
-          if (
-            this.props.onReport &&
-            typeof this.props.onReport === "function"
-          ) {
-            this.props.onReport(payload);
-          }
-
-          let response = await fetch(this.props.reportingEndpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (response.ok) {
-            this.eventCollections.length = 0;
-            sessionStorage.removeItem("rat:storedEvents");
-            callback();
-          } else {
-            this.storeEventsInSession();
-            callback();
-          }
-        } else if (
-          this.props.onReport &&
-          typeof this.props.onReport === "function"
-        ) {
+        if (this.props.onReport && typeof this.props.onReport === "function") {
           this.props.onReport(payload);
+        }
+
+        let response = await fetch(this.reportingEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
           this.eventCollections.length = 0;
           sessionStorage.removeItem("rat:storedEvents");
+          callback();
+        } else {
+          this.storeEventsInSession();
           callback();
         }
       } catch (error) {

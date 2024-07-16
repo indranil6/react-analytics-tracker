@@ -52,5 +52,17 @@
         </ul>
       </td>
     </tr>
+     <tr>
+      <td>2024-07-16</td>
+      <td>1.0.5</td>
+      <td>
+        <ul>
+        <li>Analytics Tracker Dashboard offered
+        </li>
+        <li>Readme.md updated
+        </li>
+        </ul>
+      </td>
+    </tr>
   </tbody>
 </table>

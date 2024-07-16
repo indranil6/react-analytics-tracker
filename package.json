@@ -1,6 +1,6 @@
 {
   "name": "react-analytics-tracker",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "react-analytics-tracker is a React component for tracking user interactions and events on your web application. This component captures click and view events, collects various data points, and reports them to a specified endpoint.",
   "private": false,
   "main": "dist/index.js",
@@ -34,7 +34,9 @@
     "analytics-hoc",
     "analytics-context",
     "viewport-visibility",
-    "web-analytics"
+    "web-analytics",
+    "analytics-dashboard",
+    "data-visualization"
   ],
   "author": "Indranil Kundu <indranilkundu6@gmail.com>",
   "bugs": {
